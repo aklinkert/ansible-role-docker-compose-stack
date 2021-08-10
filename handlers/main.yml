@@ -1,0 +1,6 @@
+- name: docker-compose-restart
+  systemd:
+    name: "{{ docker_compose_name }}"
+    enabled: yes
+    state: restarted
+    masked: no

@@ -1,0 +1,52 @@
+- name: Create directories
+  file:
+    path: "/srv/{{ docker_compose_name }}"
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+
+- name: Copy config templates
+  template:
+    src: docker-compose.yml
+    dest: "/srv/{{ docker_compose_name }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: 0755
+  notify: docker-compose-restart
+
+- name: Copy additional files
+  copy:
+    content: "{{ item.content }}"
+    dest: "/srv/{{ docker_compose_name }}/{{ item.name }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode | default(0755) }}"
+  with_items: "{{ docker_compose_additional_files }}"
+  notify: docker-compose-restart
+
+- name: Create empty files
+  file:
+    path: "/srv/{{ docker_compose_name }}/{{ item.name }}"
+    state: touch
+    owner: root
+    group: root
+    mode: "{{ item.mode | default(0755) }}"
+  with_items: "{{ docker_compose_create_files }}"
+
+- name: download docker images
+  shell: docker-compose pull
+  args:
+    chdir: "/srv/{{ docker_compose_name }}"
+  notify: docker-compose-restart
+
+- name: install systemd unit file
+  template:
+    src: "docker-compose.service"
+    dest: "/etc/systemd/system/{{ docker_compose_name }}.service"
+  notify: docker-compose-restart
+
+- name: reload configs
+  systemd:
+    daemon_reload: yes
+  notify: docker-compose-restart
