@@ -35,7 +35,7 @@
   with_items: "{{ docker_compose_create_files }}"
 
 - name: download docker images
-  shell: docker-compose pull
+  command: docker-compose pull
   args:
     chdir: "/srv/{{ docker_compose_name }}"
   notify: docker-compose-restart

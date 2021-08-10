@@ -1,20 +1,20 @@
 galaxy_info:
-  role_name: docker-compose
+  role_name: docker_compose
   author: Alex Klinkert
-  description: your description
-  license: Apache bv2.0
+  description: Role to configure a docker-compose stack with systemd on Debian/Ubuntu.
+  license: Apache v2.0
   min_ansible_version: 2.5
   platforms:
-  - name: Ubuntu
-    versions:
-    - all
-  - name: Debian
-    versions:
-    - all
+    - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
   galaxy_tags:
-  - docker
-  - docker-compose
-  - systemd
-  - systemd-service
-  - docker-compose stack
+    - docker
+    - docker compose
+    - systemd
+    - systemd service
+    - docker compose stack
 dependencies: []
