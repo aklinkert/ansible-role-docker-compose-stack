@@ -1,12 +1,12 @@
 # {{ ansible_managed }}
 
 [Unit]
-Description={{ docker_compose_name }}
+Description={{ docker_compose_stack_name }}
 Requires=docker.service
 After=docker.service
 
 [Service]
-WorkingDirectory=/srv/{{ docker_compose_name }}
+WorkingDirectory=/srv/{{ docker_compose_stack_name }}
 Type=oneshot
 RemainAfterExit=yes
 
