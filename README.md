@@ -46,6 +46,7 @@ fah_docker_compose_stack_additional_files:
 ```yaml
 - name: Install docker-compose service
   hosts: fah
+  become: true
   roles:
     - role: aklinkert.docker_compose
       vars:
