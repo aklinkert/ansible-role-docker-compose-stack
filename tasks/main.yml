@@ -1,6 +1,6 @@
 - name: Create directories
   file:
-    path: "/srv/{{ docker_compose_name }}"
+    path: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
     owner: root
     group: root
     mode: 0755
@@ -9,7 +9,7 @@
 - name: Copy config templates
   template:
     src: docker-compose.yml
-    dest: "/srv/{{ docker_compose_name }}/docker-compose.yml"
+    dest: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/docker-compose.yml"
     owner: root
     group: root
     mode: 0755
@@ -18,32 +18,32 @@
 - name: Copy additional files
   copy:
     content: "{{ item.content }}"
-    dest: "/srv/{{ docker_compose_name }}/{{ item.name }}"
+    dest: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/{{ item.name }}"
     owner: root
     group: root
     mode: "{{ item.mode | default(0755) }}"
-  with_items: "{{ docker_compose_additional_files }}"
+  with_items: "{{ docker_compose_stack_additional_files }}"
   notify: docker-compose-restart
 
 - name: Create empty files
   file:
-    path: "/srv/{{ docker_compose_name }}/{{ item.name }}"
+    path: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/{{ item.name }}"
     state: touch
     owner: root
     group: root
     mode: "{{ item.mode | default(0755) }}"
-  with_items: "{{ docker_compose_create_files }}"
+  with_items: "{{ docker_compose_stack_create_files }}"
 
 - name: download docker images
   command: docker-compose pull
   args:
-    chdir: "/srv/{{ docker_compose_name }}"
+    chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
   notify: docker-compose-restart
 
 - name: install systemd unit file
   template:
     src: "docker-compose.service"
-    dest: "/etc/systemd/system/{{ docker_compose_name }}.service"
+    dest: "/etc/systemd/system/{{ docker_compose_stack_name }}.service"
   notify: docker-compose-restart
 
 - name: reload configs

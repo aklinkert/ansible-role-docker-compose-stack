@@ -1,5 +1,5 @@
 galaxy_info:
-  role_name: docker_compose
+  role_name: docker_compose_stack
   author: Alex Klinkert
   description: Role to configure a docker-compose stack with systemd on Debian/Ubuntu.
   license: Apache v2.0
@@ -14,6 +14,7 @@ galaxy_info:
   galaxy_tags:
     - docker
     - docker compose
+    - stack
     - systemd
     - systemd service
     - docker compose stack

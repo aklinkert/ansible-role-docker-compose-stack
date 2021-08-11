@@ -1,1 +1,3 @@
+# {{ ansible_managed }}
+---
 {{ docker_compose_file }}
