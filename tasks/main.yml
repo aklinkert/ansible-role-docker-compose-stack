@@ -21,7 +21,7 @@
     dest: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/{{ item.name }}"
     owner: root
     group: root
-    mode: "{{ item.mode | default(0755) }}"
+    mode: "{{ item.mode | default('0755') }}"
   with_items: "{{ docker_compose_stack_additional_files }}"
   notify: docker-compose-restart
 
@@ -31,8 +31,8 @@
     state: touch
     owner: root
     group: root
-    mode: "{{ item.mode | default(0755) }}"
-  with_items: "{{ docker_compose_stack_create_files }}"
+    mode: "{{ item.mode | default('0755') }}"
+  with_items: "{{ docker_compose_stack_create_files | }}"
 
 - name: download docker images
   command: docker-compose pull
