@@ -32,7 +32,7 @@
     owner: root
     group: root
     mode: "{{ item.mode | default('0755') }}"
-  with_items: "{{ docker_compose_stack_create_files | }}"
+  with_items: "{{ docker_compose_stack_create_files | default([]) }}"
 
 - name: download docker images
   command: docker-compose pull
