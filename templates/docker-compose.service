@@ -10,13 +10,13 @@ WorkingDirectory=/srv/{{ docker_compose_stack_name }}
 Type=oneshot
 RemainAfterExit=yes
 
-ExecStartPre=/usr/local/bin/docker-compose pull --quiet
-ExecStart=/usr/local/bin/docker-compose up -d --remove-orphans
+ExecStartPre={{ docker_compose_binary }} pull --quiet
+ExecStart={{ docker_compose_binary }} up -d --remove-orphans
 
-ExecStop=/usr/local/bin/docker-compose down
+ExecStop={{ docker_compose_binary }} down
 
-ExecReload=/usr/local/bin/docker-compose pull --quiet
-ExecReload=/usr/local/bin/docker-compose up -d --remove-orphans --force-recreate
+ExecReload={{ docker_compose_binary }} pull --quiet
+ExecReload={{ docker_compose_binary }} up -d --remove-orphans --force-recreate
 
 [Install]
 WantedBy=multi-user.target

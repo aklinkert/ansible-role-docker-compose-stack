@@ -1,3 +1,5 @@
 docker_compose_stack_base_dir: /srv
 docker_compose_stack_additional_files: []
 docker_compose_stack_create_files: []
+
+docker_compose_binary: docker-compose
