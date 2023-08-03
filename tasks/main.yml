@@ -1,4 +1,4 @@
-- name: Create directories
+- name: "Create directories"
   file:
     path: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
     owner: root
@@ -6,16 +6,16 @@
     mode: 0755
     state: directory
 
-- name: Copy config templates
+- name: "Copy config templates"
   template:
-    src: docker-compose.yml
+    src: "docker-compose.yml"
     dest: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/docker-compose.yml"
     owner: root
     group: root
     mode: 0755
-  notify: docker-compose-restart
+  notify: "docker-compose-restart"
 
-- name: Copy additional files
+- name: "Copy additional files"
   copy:
     content: "{{ item.content }}"
     dest: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/{{ item.name }}"
@@ -23,9 +23,9 @@
     group: root
     mode: "{{ item.mode | default('0755') }}"
   with_items: "{{ docker_compose_stack_additional_files }}"
-  notify: docker-compose-restart
+  notify: "docker-compose-restart"
 
-- name: Create empty files
+- name: "Create empty files"
   file:
     path: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/{{ item.name }}"
     state: touch
@@ -34,19 +34,19 @@
     mode: "{{ item.mode | default('0755') }}"
   with_items: "{{ docker_compose_stack_create_files | default([]) }}"
 
-- name: download docker images
-  command: {{ docker_compose_binary }} pull
+- name: "download docker images"
+  command: "{{ docker_compose_binary }} pull"
   args:
     chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
-  notify: docker-compose-restart
+  notify: "docker-compose-restart"
 
-- name: install systemd unit file
+- name: "install systemd unit file"
   template:
     src: "docker-compose.service"
     dest: "/etc/systemd/system/{{ docker_compose_stack_name }}.service"
-  notify: docker-compose-restart
+  notify: "docker-compose-restart"
 
-- name: reload configs
+- name: "reload configs"
   systemd:
     daemon_reload: yes
-  notify: docker-compose-restart
+  notify: "docker-compose-restart"

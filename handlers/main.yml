@@ -1,4 +1,4 @@
-- name: docker-compose-restart
+- name: "docker-compose-restart"
   systemd:
     name: "{{ docker_compose_stack_name }}"
     enabled: yes
