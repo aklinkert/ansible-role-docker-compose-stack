@@ -35,7 +35,7 @@
   with_items: "{{ docker_compose_stack_create_files | default([]) }}"
 
 - name: download docker images
-  command: docker-compose pull
+  command: {{ docker_compose_binary }} pull
   args:
     chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
   notify: docker-compose-restart
