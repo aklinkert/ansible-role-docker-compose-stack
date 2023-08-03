@@ -2,8 +2,8 @@
 
 [Unit]
 Description={{ docker_compose_stack_name }}
-Requires=docker.service
-After=docker.service
+Requires={{ docker_compose_systemd_required_service }}
+After={{ docker_compose_systemd_required_service }}
 
 [Service]
 WorkingDirectory=/srv/{{ docker_compose_stack_name }}

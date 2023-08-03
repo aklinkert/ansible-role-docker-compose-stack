@@ -2,5 +2,9 @@ docker_compose_stack_base_dir: /srv
 docker_compose_stack_additional_files: []
 docker_compose_stack_create_files: []
 
-# to use nerdctl: /usr/local/bin/nerdctl
-docker_compose_binary: /usr/local/bin/docker-compose
+docker_compose_binary: "/usr/local/bin/docker-compose"
+docker_compose_systemd_required_service: "docker.service"
+
+## to use nerdctl and containerd:
+# docker_compose_binary: /usr/local/bin/nerdctl compose
+# docker_compose_systemd_required_service: "containerd.service"
