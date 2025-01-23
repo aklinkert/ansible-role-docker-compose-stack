@@ -18,5 +18,8 @@ ExecStop={{ docker_compose_binary }} down
 ExecReload={{ docker_compose_binary }} pull --quiet
 ExecReload={{ docker_compose_binary }} up -d --remove-orphans --force-recreate
 
+Restart=on-failure
+RestartSec=5s
+
 [Install]
 WantedBy=multi-user.target
