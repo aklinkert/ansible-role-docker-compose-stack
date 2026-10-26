@@ -1,6 +1,19 @@
+# Handlers run in definition order: reload systemd first, then restart.
+- name: "docker-compose-daemon-reload"
+  systemd:
+    daemon_reload: yes
+
 - name: "docker-compose-restart"
   systemd:
     name: "{{ docker_compose_stack_name }}"
     enabled: yes
     state: restarted
     masked: no
+
+# Runs after a successful restart only (a failed restart aborts the play), so
+# a pending restart is retried on the next run.
+- name: "docker-compose-clear-restart-marker"
+  file:
+    path: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/.restart-pending"
+    state: absent
+  listen: "docker-compose-restart"

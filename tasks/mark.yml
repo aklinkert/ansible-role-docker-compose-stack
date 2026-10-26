@@ -1,0 +1,17 @@
+# Writes the restart marker when the compose file, an additional file or the
+# systemd unit changed in this run. The marker is removed by the
+# docker-compose-clear-restart-marker handler after a successful restart, so a
+# change lost to a failed play is retried on the next run.
+- name: "detect config changes"
+  set_fact:
+    docker_compose_stack_config_changed: >-
+      {{ (docker_compose_stack_compose_result | default({})).changed | default(false)
+         or (docker_compose_stack_files_result | default({})).changed | default(false)
+         or (docker_compose_stack_unit_result | default({})).changed | default(false) }}
+
+- name: "remember the pending restart (config changed)"
+  copy:
+    content: ""
+    dest: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/.restart-pending"
+    mode: "0644"
+  when: docker_compose_stack_config_changed | bool

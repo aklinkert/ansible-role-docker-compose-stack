@@ -1,0 +1,9 @@
+# Includes the whole role so that syntax-check and --list-tasks parse
+# tasks/main.yml, its imports and the handlers wiring (CI, see test.yml).
+- name: "parse the whole role"
+  hosts: localhost
+  roles:
+    - role: "{{ playbook_dir }}/.."
+      vars:
+        docker_compose_stack_name: syntax
+        docker_compose_stack_file: "services: {}"

@@ -1,0 +1,36 @@
+# Test of tasks/pull.yml against a throwaway local registry, see tests/run.sh.
+# The restart handlers are replaced by counting ones with the same names and
+# `listen` wiring as handlers/main.yml (those talk to systemd).
+- name: "restart is notified only when needed"
+  hosts: localhost
+  gather_facts: false
+  vars:
+    docker_compose_binary: "docker compose"
+    docker_compose_image_cli: "docker"
+    docker_compose_stack_base_dir: "{{ lookup('env', 'TEST_DIR') }}"
+    docker_compose_stack_name: "stack"
+    docker_compose_stack_restart_when_stopped: true
+    fail_after: false
+  handlers:
+    - name: "docker-compose-restart"
+      shell: "echo restart >> {{ docker_compose_stack_base_dir }}/restarts"
+    - name: "docker-compose-clear-restart-marker"
+      file:
+        path: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/.restart-pending"
+        state: absent
+      listen: "docker-compose-restart"
+  tasks:
+    - name: "Copy config templates"
+      copy:
+        src: "{{ docker_compose_stack_base_dir }}/compose.src.yml"
+        dest: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/docker-compose.yml"
+      register: docker_compose_stack_compose_result
+      notify: "docker-compose-restart"
+    - name: "remember config changes"
+      import_tasks: "../tasks/mark.yml"
+    - name: "pull"
+      import_tasks: "../tasks/pull.yml"
+    - name: "fail after the pull, like any later task of the role could"
+      fail:
+        msg: "simulated failure before the handlers ran"
+      when: fail_after | bool
