@@ -1,0 +1,38 @@
+# Pulls the images of the stack and notifies the restart handler only when a
+# pull really fetched a different image (image IDs before and after differ).
+# An unconditional `pull` used to notify on every run and so recreated every
+# container of the stack on each play.
+- name: "list images of the stack"
+  command: "{{ docker_compose_binary }} config --images"
+  args:
+    chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
+  register: docker_compose_stack_images
+  changed_when: false
+  check_mode: false
+
+# Missing images make the inspect exit non-zero (not yet pulled); the IDs of
+# the images that exist are still printed, so the exit code is ignored.
+- name: "record image IDs before the pull"
+  command: "{{ docker_compose_image_cli }} image inspect --format '{% raw %}{{.Id}}{% endraw %}' {{ docker_compose_stack_images.stdout_lines | map('quote') | join(' ') }}"
+  register: docker_compose_stack_images_before
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: docker_compose_stack_images.stdout_lines | length > 0
+
+- name: "pull docker images"
+  command: "{{ docker_compose_binary }} pull"
+  args:
+    chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
+  changed_when: false
+  when: docker_compose_stack_images.stdout_lines | length > 0
+
+- name: "detect pulled docker images"
+  command: "{{ docker_compose_image_cli }} image inspect --format '{% raw %}{{.Id}}{% endraw %}' {{ docker_compose_stack_images.stdout_lines | map('quote') | join(' ') }}"
+  register: docker_compose_stack_images_after
+  changed_when: >-
+    (docker_compose_stack_images_after.stdout_lines | sort)
+    != (docker_compose_stack_images_before.stdout_lines | default([]) | sort)
+  check_mode: false
+  when: docker_compose_stack_images.stdout_lines | length > 0
+  notify: "docker-compose-restart"

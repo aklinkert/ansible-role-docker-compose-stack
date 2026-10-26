@@ -1,0 +1,18 @@
+# Test of tasks/pull.yml against a throwaway local registry, see tests/run.sh.
+# Stands in for the role's handler with one that counts notifications.
+- name: "pull notifies only when an image changed"
+  hosts: localhost
+  gather_facts: false
+  vars:
+    docker_compose_binary: "docker compose"
+    docker_compose_image_cli: "docker"
+    docker_compose_stack_base_dir: "{{ lookup('env', 'TEST_DIR') }}"
+    docker_compose_stack_name: "stack"
+  handlers:
+    - name: "docker-compose-restart"
+      shell: "echo restart >> {{ docker_compose_stack_base_dir }}/restarts"
+  tasks:
+    - name: "pull"
+      import_tasks: "../tasks/pull.yml"
+    - name: "flush handlers"
+      meta: flush_handlers

@@ -8,3 +8,7 @@ docker_compose_systemd_required_service: "docker.service"
 ## to use nerdctl and containerd:
 # docker_compose_binary: /usr/local/bin/nerdctl compose
 # docker_compose_systemd_required_service: "containerd.service"
+
+# CLI used to inspect image IDs and decide whether a pull fetched anything new.
+# Derived from docker_compose_binary: nerdctl for "nerdctl compose", else docker.
+docker_compose_image_cli: "{{ 'nerdctl' if 'nerdctl' in docker_compose_binary else 'docker' }}"

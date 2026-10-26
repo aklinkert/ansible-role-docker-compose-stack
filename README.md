@@ -56,6 +56,24 @@ fah_docker_compose_stack_additional_files:
         docker_compose_stack_create_files: "{{ fah_docker_compose_stack_create_files }}"
 ```
 
+## Restart behaviour
+
+The stack is restarted (`docker-compose-restart` handler) only when something
+changed: the compose file, an additional file, the systemd unit, or when
+`pull` fetched a different image (image IDs before and after differ). A run
+with unchanged config and unchanged images changes nothing and restarts nothing.
+
+Images are inspected with `docker_compose_image_cli` (default: `nerdctl` if
+`docker_compose_binary` contains `nerdctl`, else `docker`); override it if the
+inspect CLI is not on the default path.
+
+## Tests
+
+`tests/run.sh` (needs docker with compose and ansible-playbook, runs in CI via
+`.github/workflows/test.yml`) pushes images to a throwaway local registry and
+asserts that unchanged images report no change and notify nothing, and that a
+new image notifies once.
+
 # Licence
 
   Apache v2.0
