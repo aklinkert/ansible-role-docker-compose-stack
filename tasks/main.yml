@@ -13,6 +13,7 @@
     owner: root
     group: root
     mode: 0755
+  register: docker_compose_stack_compose_result
   notify: "docker-compose-restart"
 
 - name: "Copy additional files"
@@ -23,6 +24,7 @@
     group: root
     mode: "{{ item.mode | default('0755') }}"
   with_items: "{{ docker_compose_stack_additional_files }}"
+  register: docker_compose_stack_files_result
   notify: "docker-compose-restart"
 
 - name: "Create empty files"
@@ -36,13 +38,26 @@
     mode: "{{ item.mode | default('0755') }}"
   with_items: "{{ docker_compose_stack_create_files | default([]) }}"
 
-- name: "download docker images"
-  import_tasks: "pull.yml"
-
 - name: "install systemd unit file"
   template:
     src: "docker-compose.service"
     dest: "/etc/systemd/system/{{ docker_compose_stack_name }}.service"
+  register: docker_compose_stack_unit_result
   notify:
     - "docker-compose-daemon-reload"
     - "docker-compose-restart"
+
+# Recovers a daemon-reload lost to a play that failed before its handler ran.
+- name: "check whether systemd needs a daemon-reload"
+  command: "systemctl show --property=NeedDaemonReload --value {{ docker_compose_stack_name }}.service"
+  register: docker_compose_stack_need_reload
+  changed_when: docker_compose_stack_need_reload.stdout | trim == 'yes'
+  check_mode: false
+  notify: "docker-compose-daemon-reload"
+
+# Persist a pending restart for config changes before anything can fail.
+- name: "remember config changes"
+  import_tasks: "mark.yml"
+
+- name: "download docker images"
+  import_tasks: "pull.yml"

@@ -29,7 +29,7 @@ done
 $ready || { echo "FAIL: registry not ready after 30s"; exit 1; }
 
 # Two registry services and one service built from source (no image:).
-cat > "$stack/docker-compose.yml" <<YML
+cat > "$TEST_DIR/compose.src.yml" <<YML
 services:
   a:
     image: $repo/a
@@ -41,6 +41,7 @@ services:
     build: ./build-only
     command: sleep 3600
 YML
+cp "$TEST_DIR/compose.src.yml" "$stack/docker-compose.yml"
 printf 'FROM busybox:1.36\n' > "$stack/build-only/Dockerfile"
 
 # Pushes an image with new content under the same tag. Locally the tag keeps
@@ -82,10 +83,23 @@ expect 1 "failed play: handler did not run"
 play; expect 2 "lost notification is recovered on the next run"
 play; unchanged "after recovery"; expect 2 "run after recovery: changed=0, no notification"
 
+# A compose file change lost to a failed play is retried.
+sed -i.bak 's/sleep 3600/sleep 3601/' "$TEST_DIR/compose.src.yml" && rm "$TEST_DIR/compose.src.yml.bak"
+if ansible-playbook -e fail_after=true pull.yml >"$TEST_DIR/out" 2>&1; then fail "play should have failed"; fi
+[ -e "$stack/.restart-pending" ] || fail "marker missing after a failed play with a config change"
+expect 2 "failed play with config change: handler did not run"
+play; expect 3 "lost config change is recovered on the next run"
+play; unchanged "after config recovery"; expect 3 "run after config recovery: changed=0, no notification"
+
 (cd "$stack" && docker compose stop >/dev/null 2>&1)
-play; expect 3 "stopped stack notifies"
+play -e docker_compose_stack_restart_when_stopped=false; expect 3 "stopped stack with restart_when_stopped=false: no notification"
+play; expect 4 "stopped stack notifies"
+
+# A broken image CLI must fail the role instead of silently disabling detection.
+if ansible-playbook -e docker_compose_image_cli=/nonexistent/docker pull.yml >"$TEST_DIR/out" 2>&1; then fail "broken image CLI should fail the play"; fi
+echo "ok: broken image CLI fails the play"
 
 # Check mode must not fail when the stack directory has no compose file yet.
-mkdir -p "$TEST_DIR/empty/stack"
+mkdir -p "$TEST_DIR/empty/stack"; cp "$TEST_DIR/compose.src.yml" "$TEST_DIR/empty/"
 TEST_DIR="$TEST_DIR/empty" ansible-playbook --check pull.yml >"$TEST_DIR/out" 2>&1 || fail "check mode without compose file"
 echo "ok: check mode without compose file"

@@ -9,6 +9,11 @@ docker_compose_systemd_required_service: "docker.service"
 # docker_compose_binary: /usr/local/bin/nerdctl compose
 # docker_compose_systemd_required_service: "containerd.service"
 
+# Start the stack when no container of it is running (a stopped stack counts
+# as a change). Set to false to leave a stack that was stopped on purpose alone.
+docker_compose_stack_restart_when_stopped: true
+
 # CLI used to inspect image IDs and decide whether a pull fetched anything new.
-# Derived from docker_compose_binary: nerdctl if its first word is nerdctl, else docker.
-docker_compose_image_cli: "{{ 'nerdctl' if (docker_compose_binary.split() | first | basename) == 'nerdctl' else 'docker' }}"
+# For "nerdctl compose" it is the first word of docker_compose_binary (full
+# path kept, e.g. /usr/local/bin/nerdctl), else docker.
+docker_compose_image_cli: "{{ (docker_compose_binary.split() | first) if (docker_compose_binary.split() | first | basename) == 'nerdctl' else 'docker' }}"

@@ -1,13 +1,19 @@
 # Pulls the images of the stack and notifies the restart handler only when it
 # is needed, so unchanged stacks are not recreated on every run:
+#   - the compose file, an additional file or the unit changed (tasks/mark.yml),
 #   - a pull fetched a different image (image IDs before and after differ),
-#   - an earlier run noticed a new image but never completed the restart (the
-#     marker file below, written before the handler is notified and removed
-#     by the handler once the restart succeeded), or
-#   - no container of the stack is running.
-# Services built from source (`build:` without `image:`) are skipped.
-# Works with docker compose and nerdctl compose, so it parses `config` (YAML)
-# and `image inspect` (JSON) instead of using version specific flags.
+#   - an earlier run left the marker file (restart never completed), or
+#   - no container of the stack is running (docker_compose_stack_restart_when_stopped).
+# Services with `build:` are skipped. Works with docker compose and nerdctl
+# compose, so it parses `config` (YAML) and `image inspect` (JSON) instead of
+# using version specific flags.
+- name: "reset pull facts"
+  set_fact:
+    docker_compose_stack_images_changed: false
+    docker_compose_stack_not_running: false
+    docker_compose_stack_pull_services: []
+    docker_compose_stack_pull_images: []
+
 - name: "check for the compose file and the restart marker"
   stat:
     path: "{{ item }}"
@@ -16,86 +22,102 @@
     - "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/.restart-pending"
   register: docker_compose_stack_stat
 
-- name: "read the stack configuration"
-  command: "{{ docker_compose_binary }} config"
-  args:
-    chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
-  register: docker_compose_stack_config
-  changed_when: false
-  check_mode: false
+- name: "inspect the stack"
   when: docker_compose_stack_stat.results[0].stat.exists
+  block:
+    # The rendered config contains interpolated secrets (.env): never log it,
+    # on failure surface only stderr.
+    - name: "read the stack configuration"
+      block:
+        - name: "compose config"
+          command: "{{ docker_compose_binary }} config"
+          args:
+            chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
+          register: docker_compose_stack_config
+          changed_when: false
+          check_mode: false
+          no_log: true
+      rescue:
+        - name: "report the compose config failure"
+          fail:
+            msg: "{{ docker_compose_binary }} config failed: {{ docker_compose_stack_config.stderr | default('(no stderr)') }}"
 
-- name: "work out the images to pull"
-  set_fact:
-    docker_compose_stack_pull_services: >-
-      {{ (docker_compose_stack_config.stdout | from_yaml).services | default({}) | dict2items
-         | rejectattr('value.build', 'defined') | selectattr('value.image', 'defined')
-         | map(attribute='key') | list }}
-    docker_compose_stack_pull_images: >-
-      {{ (docker_compose_stack_config.stdout | from_yaml).services | default({}) | dict2items
-         | rejectattr('value.build', 'defined') | selectattr('value.image', 'defined')
-         | map(attribute='value.image') | unique | list }}
-  when: docker_compose_stack_stat.results[0].stat.exists
+    - name: "work out the images to pull"
+      set_fact:
+        docker_compose_stack_pull_services: >-
+          {{ (docker_compose_stack_config.stdout | from_yaml).services | default({}) | dict2items
+             | rejectattr('value.build', 'defined') | selectattr('value.image', 'defined')
+             | map(attribute='key') | list }}
+        docker_compose_stack_pull_images: >-
+          {{ (docker_compose_stack_config.stdout | from_yaml).services | default({}) | dict2items
+             | rejectattr('value.build', 'defined') | selectattr('value.image', 'defined')
+             | map(attribute='value.image') | unique | list }}
+      no_log: true
 
-- name: "record image IDs before the pull"
-  command: "{{ docker_compose_image_cli }} image inspect {{ docker_compose_stack_pull_images | map('quote') | join(' ') }}"
-  register: docker_compose_stack_images_before
-  changed_when: false
-  failed_when: false  # exit code is non-zero while an image is not pulled yet
-  check_mode: false
-  when:
-    - docker_compose_stack_stat.results[0].stat.exists
-    - docker_compose_stack_pull_images | length > 0
+    # Only a missing image (not pulled yet) is tolerated before the pull.
+    - name: "record image IDs before the pull"
+      command: "{{ docker_compose_image_cli }} image inspect {{ docker_compose_stack_pull_images | map('quote') | join(' ') }}"
+      register: docker_compose_stack_images_before
+      changed_when: false
+      failed_when:
+        - docker_compose_stack_images_before.rc != 0
+        - docker_compose_stack_images_before.stderr is not search('(?i)no such (image|object)|not found')
+      check_mode: false
+      when: docker_compose_stack_pull_images | length > 0
 
-- name: "pull docker images"
-  command: "{{ docker_compose_binary }} pull {{ docker_compose_stack_pull_services | map('quote') | join(' ') }}"
-  args:
-    chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
-  changed_when: false
-  when:
-    - docker_compose_stack_stat.results[0].stat.exists
-    - docker_compose_stack_pull_images | length > 0
+    - name: "pull docker images"
+      command: "{{ docker_compose_binary }} pull {{ docker_compose_stack_pull_services | map('quote') | join(' ') }}"
+      args:
+        chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
+      changed_when: false
+      when: docker_compose_stack_pull_images | length > 0
 
-- name: "record image IDs after the pull"
-  command: "{{ docker_compose_image_cli }} image inspect {{ docker_compose_stack_pull_images | map('quote') | join(' ') }}"
-  register: docker_compose_stack_images_after
-  changed_when: false
-  failed_when: false
-  check_mode: false
-  when:
-    - docker_compose_stack_stat.results[0].stat.exists
-    - docker_compose_stack_pull_images | length > 0
+    # After a successful pull every image exists: a failing inspect (e.g. a
+    # wrong docker_compose_image_cli) must fail the role, not disable detection.
+    - name: "record image IDs after the pull"
+      command: "{{ docker_compose_image_cli }} image inspect {{ docker_compose_stack_pull_images | map('quote') | join(' ') }}"
+      register: docker_compose_stack_images_after
+      changed_when: false
+      check_mode: false
+      when: docker_compose_stack_pull_images | length > 0
 
-- name: "list running containers of the stack"
-  command: "{{ docker_compose_binary }} ps -q"
-  args:
-    chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
-  register: docker_compose_stack_running
-  changed_when: false
-  failed_when: false
-  check_mode: false
-  when: docker_compose_stack_stat.results[0].stat.exists
+    # docker-compose v1 lists stopped containers in `ps -q` too, so a fully
+    # stopped stack goes unnoticed there. Fails when ps itself fails.
+    - name: "list running containers of the stack"
+      command: "{{ docker_compose_binary }} ps -q"
+      args:
+        chdir: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}"
+      register: docker_compose_stack_running
+      changed_when: false
+      check_mode: false
+
+    - name: "compare images and running containers"
+      set_fact:
+        docker_compose_stack_images_changed: >-
+          {{ (docker_compose_stack_pull_images | length > 0) and
+             ((docker_compose_stack_images_before.stdout | default('[]', true) | from_json | map(attribute='Id') | sort | list)
+              != (docker_compose_stack_images_after.stdout | default('[]', true) | from_json | map(attribute='Id') | sort | list)) }}
+        docker_compose_stack_not_running: >-
+          {{ docker_compose_stack_running.rc == 0 and (docker_compose_stack_running.stdout | trim) == '' }}
+      no_log: true
 
 - name: "decide whether the stack needs a restart"
   set_fact:
-    docker_compose_stack_images_changed: >-
-      {{ (docker_compose_stack_images_before.stdout | default('[]', true) | from_json | map(attribute='Id') | sort | list)
-         != (docker_compose_stack_images_after.stdout | default('[]', true) | from_json | map(attribute='Id') | sort | list) }}
-    docker_compose_stack_not_running: "{{ (docker_compose_stack_running.stdout | trim) == '' }}"
-  when: docker_compose_stack_stat.results[0].stat.exists and docker_compose_stack_pull_images | length > 0
+    docker_compose_stack_needs_restart: >-
+      {{ docker_compose_stack_images_changed | bool
+         or docker_compose_stack_config_changed | default(false) | bool
+         or docker_compose_stack_stat.results[1].stat.exists
+         or (docker_compose_stack_not_running | bool and docker_compose_stack_restart_when_stopped | bool) }}
 
 - name: "remember the pending restart"
   copy:
     content: ""
     dest: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/.restart-pending"
     mode: "0644"
-  when: docker_compose_stack_images_changed | default(false) | bool
+  when: docker_compose_stack_needs_restart | bool
 
-- name: "restart the stack when images changed or it is not running"
+- name: "restart the stack when needed"
   debug:
-    msg: "pulled new images, a restart was pending or the stack is not running"
-  changed_when: >-
-    docker_compose_stack_images_changed | default(false) | bool
-    or docker_compose_stack_stat.results[1].stat.exists
-    or (docker_compose_stack_not_running | default(false) | bool)
+    msg: "config or images changed, a restart was pending or the stack is not running"
+  changed_when: docker_compose_stack_needs_restart | bool
   notify: "docker-compose-restart"
