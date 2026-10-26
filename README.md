@@ -101,6 +101,16 @@ recovered on the next run; a stopped stack notifies (unless opted out); build-on
 services work; check mode without a compose file does not fail. The systemd
 handlers are replaced by counting ones.
 
+## Releases
+
+Versions are cut automatically: every merge to `main` runs the tests, then
+`.github/workflows/release.yml` derives the next semver from the conventional
+commit messages since the last tag (`feat:` minor, `fix:` and the other types
+patch, `!` or a `BREAKING CHANGE` footer major; anything else is a patch),
+pushes the `vX.Y.Z` tag and creates a GitHub release with the changelog. Do not
+tag by hand. Consumers should pin the tag and its commit SHA, e.g. in
+`requirements.yml` `version: <commit SHA>  # v1.5.0`.
+
 # Licence
 
   Apache v2.0
