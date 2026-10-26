@@ -1,7 +1,7 @@
 name: release
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 permissions: {}
 # Never run two releases at once (they would compute the same next tag).
@@ -19,7 +19,7 @@ jobs:
   release:
     needs: test
     # A manual run from another branch must never tag.
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -49,7 +49,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag_prefix: v
           default_bump: patch
-          release_branches: master
+          release_branches: main
           custom_release_rules: >-
             feat:minor:Features,fix:patch:Bug Fixes,perf:patch:Performance,revert:patch:Reverts,refactor:patch:Refactoring,docs:patch:Documentation,chore:patch:Chores,ci:patch:CI,test:patch:Tests,build:patch:Build
       # Also recovers a tag whose release creation failed on an earlier run.

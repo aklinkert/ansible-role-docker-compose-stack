@@ -103,7 +103,7 @@ handlers are replaced by counting ones.
 
 ## Releases
 
-Versions are cut automatically: every merge to `master` runs the tests, then
+Versions are cut automatically: every merge to `main` runs the tests, then
 `.github/workflows/release.yml` derives the next semver from the conventional
 commit messages since the last tag (`feat:` minor, `fix:` and the other types
 patch, `!` or a `BREAKING CHANGE` footer major; anything else is a patch),
