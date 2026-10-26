@@ -103,3 +103,11 @@ echo "ok: broken image CLI fails the play"
 mkdir -p "$TEST_DIR/empty/stack"; cp "$TEST_DIR/compose.src.yml" "$TEST_DIR/empty/"
 TEST_DIR="$TEST_DIR/empty" ansible-playbook --check pull.yml >"$TEST_DIR/out" 2>&1 || fail "check mode without compose file"
 echo "ok: check mode without compose file"
+
+# Check mode with an image that was never pulled must pass and notify nothing.
+before="$(restarts)"
+(cd "$stack" && docker compose down >/dev/null 2>&1)
+docker rmi "$repo/a" >/dev/null 2>&1 || true
+ansible-playbook --check pull.yml >"$TEST_DIR/out" 2>&1 || fail "check mode with an unpulled image"
+[ "$(restarts)" = "$before" ] || fail "check mode must not notify"
+echo "ok: check mode with an unpulled image passes and notifies nothing"

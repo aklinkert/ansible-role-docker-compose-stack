@@ -71,7 +71,9 @@ The stack is restarted (handler `docker-compose-restart`) only when needed:
   without a running container is started again. Set
   `docker_compose_stack_restart_when_stopped: false` to leave a stack alone
   that was stopped on purpose. docker-compose v1 lists stopped containers in
-  `ps -q` too, so this check does not trigger there.
+  `ps -q` too, so this check does not trigger there. `nerdctl compose ps -q`
+  needs nerdctl 1.6.1 or newer (the flag was added after 1.6.0). A failing
+  `ps` fails the role.
 
 A lost systemd `daemon-reload` is recovered too (`systemctl show
 NeedDaemonReload`). A run with unchanged config, unchanged images and a running

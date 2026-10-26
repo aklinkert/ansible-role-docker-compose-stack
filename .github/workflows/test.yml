@@ -18,4 +18,9 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install 'ansible-core==2.18.18'
           echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+      - name: Parse the whole role (tasks, imports, handlers)
+        working-directory: tests
+        run: |
+          ansible-playbook --syntax-check role.yml
+          ansible-playbook --list-tasks role.yml
       - run: tests/run.sh
