@@ -7,8 +7,15 @@ permissions:
   contents: read
 jobs:
   pull-notify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - run: pip install ansible-core
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install ansible-core into a venv
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install 'ansible-core==2.18.18'
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - run: tests/run.sh

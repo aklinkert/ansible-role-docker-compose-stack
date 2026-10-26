@@ -29,13 +29,15 @@
   file:
     path: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/{{ item.name }}"
     state: touch
+    modification_time: preserve
+    access_time: preserve
     owner: root
     group: root
     mode: "{{ item.mode | default('0755') }}"
   with_items: "{{ docker_compose_stack_create_files | default([]) }}"
 
 - name: "download docker images"
-  include_tasks: "pull.yml"
+  import_tasks: "pull.yml"
 
 - name: "install systemd unit file"
   template:

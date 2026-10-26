@@ -9,3 +9,11 @@
     enabled: yes
     state: restarted
     masked: no
+
+# Runs after a successful restart only (a failed restart aborts the play), so
+# a pending restart is retried on the next run.
+- name: "docker-compose-clear-restart-marker"
+  file:
+    path: "{{ docker_compose_stack_base_dir }}/{{ docker_compose_stack_name }}/.restart-pending"
+    state: absent
+  listen: "docker-compose-restart"

@@ -58,21 +58,37 @@ fah_docker_compose_stack_additional_files:
 
 ## Restart behaviour
 
-The stack is restarted (`docker-compose-restart` handler) only when something
-changed: the compose file, an additional file, the systemd unit, or when
-`pull` fetched a different image (image IDs before and after differ). A run
-with unchanged config and unchanged images changes nothing and restarts nothing.
+The stack is restarted (handler `docker-compose-restart`) only when needed:
 
-Images are inspected with `docker_compose_image_cli` (default: `nerdctl` if
-`docker_compose_binary` contains `nerdctl`, else `docker`); override it if the
-inspect CLI is not on the default path.
+- the compose file, an additional file or the systemd unit changed,
+- `pull` fetched a different image (image IDs of the stack's services before
+  and after the pull differ),
+- an earlier run saw a new image but did not complete the restart (e.g. a later
+  task failed): the role writes `.restart-pending` into the stack directory
+  before notifying and the handler removes it after a successful restart, or
+- no container of the stack is running (`compose ps -q` is empty).
+
+A run with unchanged config, unchanged images and a running stack changes
+nothing and restarts nothing. Out-of-band changes (an image pulled by hand
+while the containers keep running the old one) are not detected.
+
+Services with `build:` and no `image:` are skipped. Only the pullable services
+are pulled. The role parses the output of `compose config` (YAML) and
+`image inspect` (JSON), so it works with docker compose and `nerdctl compose`.
+Images are inspected with `docker_compose_image_cli` (default: `nerdctl` if the
+first word of `docker_compose_binary` is `nerdctl`, else `docker`). In check
+mode the pull is skipped and nothing is restarted.
 
 ## Tests
 
 `tests/run.sh` (needs docker with compose and ansible-playbook, runs in CI via
-`.github/workflows/test.yml`) pushes images to a throwaway local registry and
-asserts that unchanged images report no change and notify nothing, and that a
-new image notifies once.
+`.github/workflows/test.yml`) pushes images to a throwaway local registry
+(pinned by digest) and asserts: a running stack with current images reports no
+change and notifies nothing, also on repeated runs; an updated image (old one
+kept locally, same tag) notifies once; a notification lost to a failed play is
+recovered on the next run; a stopped stack notifies; build-only and multiple
+services work; check mode without a compose file does not fail. The systemd
+handlers are replaced by counting ones.
 
 # Licence
 
