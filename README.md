@@ -2,6 +2,10 @@
 
 Ansible role that configures a docker-compose stack with systemd.
 
+## Requirements
+
+- ansible-core 2.16 or newer (minimum supported version)
+
 
 ## Usage
 
