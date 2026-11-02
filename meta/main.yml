@@ -3,7 +3,7 @@ galaxy_info:
   author: Alex Klinkert
   description: Role to configure a docker-compose stack with systemd on Debian/Ubuntu.
   license: Apache v2.0
-  min_ansible_version: 2.5
+  min_ansible_version: "2.16"
   platforms:
     - name: Ubuntu
       versions:
