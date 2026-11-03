@@ -1,0 +1,5 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["local>aklinkert/renovate-config"],
+  "ignorePaths": ["**/node_modules/**", "templates/**"]
+}
